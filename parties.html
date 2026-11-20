@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Parties &amp; Candidates — eBallot</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <div class="page-head">
+      <div class="crumbs"><a href="index.html">Home</a> / Parties &amp; Candidates</div>
+      <h1>Contesting parties and candidates</h1>
+      <p>Ten recognised parties are contesting all five assembly constituencies. Party details and manifesto
+        highlights are as submitted with the nomination papers.</p>
+    </div>
+
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Search party, leader or candidate" aria-label="Search parties">
+      <span class="muted" id="count"></span>
+    </div>
+
+    <div class="party-grid" id="parties"></div>
+
+    <section class="section">
+      <h2>Candidates by constituency</h2>
+      <div class="toolbar">
+        <label for="ac" class="hidden">Constituency</label>
+        <select id="ac" style="max-width:320px"></select>
+        <span class="muted" id="ac-meta"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th class="num">Sl.</th><th>Candidate</th><th>Party</th><th>Symbol</th></tr></thead>
+          <tbody id="cands"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+UI.boot(() => {
+  const grid = document.getElementById("parties");
+  const q = document.getElementById("q");
+
+  function renderParties() {
+    const term = q.value.trim().toLowerCase();
+    const list = PARTIES.filter(p => !term ||
+      [p.name, p.id, p.leader, p.ideology, ...p.candidates].join(" ").toLowerCase().includes(term));
+    document.getElementById("count").textContent = `${list.length} of ${PARTIES.length} parties`;
+    grid.innerHTML = list.map(p => `
+      <article class="party-card" style="--pc:${p.color}">
+        <header>
+          <div class="sym-box">${symbolSvg(p.symbol, 44, p.color)}</div>
+          <div>
+            <h3>${UI.esc(p.name)}</h3>
+            <div class="abbr">${p.id} · Symbol: ${p.symbolName}</div>
+            <p class="tagline">"${UI.esc(p.tagline)}"</p>
+          </div>
+        </header>
+        <div class="body">
+          <table class="kv">
+            <tr><th>Party president</th><td>${UI.esc(p.leader)}</td></tr>
+            <tr><th>Founded</th><td>${p.founded}</td></tr>
+            <tr><th>Headquarters</th><td>${p.hq}</td></tr>
+            <tr><th>Ideology</th><td>${p.ideology}</td></tr>
+          </table>
+          <h4>Manifesto highlights</h4>
+          <ul>${p.manifesto.map(m => `<li>${UI.esc(m)}</li>`).join("")}</ul>
+        </div>
+        <footer>Candidates: ${p.candidates.map(UI.esc).join(", ")}</footer>
+      </article>`).join("") || `<p class="muted">No party matches “${UI.esc(term)}”.</p>`;
+  }
+  q.addEventListener("input", renderParties);
+  renderParties();
+
+  const ac = document.getElementById("ac");
+  ac.innerHTML = CONSTITUENCIES.map(c => `<option value="${c.id}">${c.id} — ${c.name}</option>`).join("");
+  function renderCands() {
+    const c = constituencyById(ac.value);
+    document.getElementById("ac-meta").textContent = `District ${c.district} · ${c.category} seat · ${c.booths} polling stations`;
+    const rows = PARTIES.map(p => ({ name: candidateFor(p.id, c.id), p }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    document.getElementById("cands").innerHTML = rows.map((r, i) => `
+      <tr><td class="num">${i + 1}</td><td><strong>${UI.esc(r.name)}</strong></td>
+      <td><span class="party-chip"><span class="dot" style="background:${r.p.color}"></span>${r.p.name}</span></td>
+      <td>${symbolSvg(r.p.symbol, 28, r.p.color)}</td></tr>`).join("") +
+      `<tr><td class="num">${rows.length + 1}</td><td><strong>None of the Above</strong></td><td>NOTA</td><td>${symbolSvg("nota", 28, NOTA.color)}</td></tr>`;
+  }
+  ac.addEventListener("change", renderCands);
+  renderCands();
+});
+</script>
+</body>
+</html>

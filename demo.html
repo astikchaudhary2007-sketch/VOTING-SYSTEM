@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo Voting Booth — eBallot</title>
+  <meta name="description" content="Demonstration voting interface. Stores one vote in this browser only. Not for real elections.">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .demo-banner { background: repeating-linear-gradient(-45deg, #fbf1db 0 14px, #f6e7c4 14px 28px); border: 1px solid #e0c98f; border-left: 5px solid var(--warn); padding: 14px 18px; margin-bottom: 24px; }
+    .demo-banner strong { font-family: var(--serif); font-size: 1.15rem; color: #6b4600; letter-spacing: .02em; }
+    .demo-banner p { margin: 4px 0 0; font-size: 14px; color: #5a4a2a; }
+    .opt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+    .opt { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--pc); padding: 12px 14px; cursor: pointer; border-radius: var(--radius); }
+    .opt:hover { border-color: var(--navy); border-left-color: var(--pc); }
+    .opt input { margin: 0; accent-color: var(--accent); width: 18px; height: 18px; flex: none; }
+    .opt.on { box-shadow: 0 0 0 2px var(--accent); }
+    .opt strong { display: block; font-size: 14.5px; line-height: 1.3; }
+    .opt small { color: var(--ink-3); }
+    fieldset:disabled .opt { cursor: not-allowed; opacity: .55; }
+    .tot-row { display: grid; grid-template-columns: 70px minmax(0, 1fr) 46px; gap: 10px; align-items: center; font-size: 14px; padding: 5px 0; }
+    .tot-row.mine strong::after { content: " ●"; color: var(--accent); }
+    .tot-row .bar-track { height: 14px; }
+    .tot-row .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+    @media (max-width: 700px) { .tot-row { grid-template-columns: 60px minmax(0, 1fr) 40px; } }
+  </style>
+</head>
+<body>
+<header id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <div class="demo-banner" role="note">
+      <strong>DEMONSTRATION ONLY — NOT FOR REAL ELECTIONS</strong>
+      <p>This booth stores votes in this browser's local storage only. Nothing is sent to a server, votes are not
+        verified or secret, and anyone using this device can clear them. Parties shown are fictional.</p>
+    </div>
+
+    <div class="page-head">
+      <div class="crumbs"><a href="index.html">Home</a> / Demo Booth</div>
+      <h1>Demo voting booth</h1>
+      <p>Pick one option and record your vote. This browser allows one vote; the running totals for this browser
+        appear on the right.</p>
+    </div>
+
+    <div class="split">
+      <div>
+        <div id="status"></div>
+        <form id="f">
+          <fieldset id="fs">
+            <legend>Choose one option</legend>
+            <div class="opt-grid" id="opts" role="radiogroup"></div>
+            <div class="btn-row" style="margin:18px 0 14px">
+              <button type="submit" class="btn btn-accent" id="cast" disabled>Record demo vote</button>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      <aside>
+        <div class="card">
+          <div class="card-head"><h3>Totals in this browser</h3><small id="sum"></small></div>
+          <div id="totals"></div>
+          <p class="hint" style="margin-top:12px">● marks the vote recorded by this browser.</p>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h3>Demo controls</h3>
+          <p class="muted" style="font-size:13.5px">For classroom or kiosk demos you can unlock the booth for the next
+            person while keeping the totals, or wipe everything.</p>
+          <div class="btn-row">
+            <button class="btn btn-outline btn-sm" id="next" disabled>Unlock for next demo voter</button>
+            <button class="btn btn-danger btn-sm" id="clear">Clear all demo data</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+UI.boot(() => {
+  const KEY = "eballot_demo_booth_v1";
+  const $ = id => document.getElementById(id);
+  const OPTIONS = [...PARTIES, NOTA];
+
+  // state: { totals: {id: n}, myVote: {choice, at} | null }
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY));
+      if (s && s.totals) return s;
+    } catch { /* storage blocked or corrupt — start fresh */ }
+    return { totals: {}, myVote: null };
+  }
+  function save(s) {
+    try { localStorage.setItem(KEY, JSON.stringify(s)); return true; }
+    catch { UI.toast("This browser blocked local storage, so the vote could not be saved.", "error"); return false; }
+  }
+  let state = load();
+
+  $("opts").innerHTML = OPTIONS.map(p => `
+    <label class="opt" style="--pc:${p.color}">
+      <input type="radio" name="choice" value="${p.id}">
+      ${symbolSvg(p.symbol, 32, p.color)}
+      <span><strong>${UI.esc(p.name)}</strong><small>${p.id === "NOTA" ? "Reject all options" : p.id + " · " + p.symbolName}</small></span>
+    </label>`).join("");
+
+  $("opts").addEventListener("change", () => {
+    document.querySelectorAll(".opt").forEach(o => o.classList.toggle("on", o.querySelector("input").checked));
+    $("cast").disabled = !document.querySelector('input[name="choice"]:checked');
+  });
+
+  function render() {
+    const voted = !!state.myVote;
+    $("fs").disabled = voted;
+    $("next").disabled = !voted;
+    if (voted) {
+      const p = partyById(state.myVote.choice);
+      $("status").innerHTML = `<div class="notice notice-ok"><strong>Demo vote recorded in this browser</strong>
+        You chose <strong style="display:inline">${UI.esc(p.name)}</strong> on ${UI.fmtDate(state.myVote.at, true)}.
+        This browser cannot vote again unless the booth is unlocked.</div>`;
+      document.querySelectorAll('input[name="choice"]').forEach(i => { i.checked = i.value === state.myVote.choice; });
+      document.querySelectorAll(".opt").forEach(o => o.classList.toggle("on", o.querySelector("input").checked));
+    } else {
+      $("status").innerHTML = "";
+    }
+
+    const total = OPTIONS.reduce((s, p) => s + (state.totals[p.id] || 0), 0);
+    const max = Math.max(1, ...OPTIONS.map(p => state.totals[p.id] || 0));
+    $("sum").textContent = `${total} vote${total === 1 ? "" : "s"}`;
+    $("totals").innerHTML = OPTIONS.slice()
+      .sort((a, b) => (state.totals[b.id] || 0) - (state.totals[a.id] || 0))
+      .map(p => {
+        const n = state.totals[p.id] || 0;
+        const mine = state.myVote && state.myVote.choice === p.id;
+        return `<div class="tot-row ${mine ? "mine" : ""}">
+          <strong>${p.id}</strong>
+          <div class="bar-track"><div class="bar-fill" style="width:${n / max * 100}%;background:${p.color}"></div></div>
+          <span class="n">${n}</span></div>`;
+      }).join("");
+  }
+
+  $("f").addEventListener("submit", e => {
+    e.preventDefault();
+    if (state.myVote) return;
+    const sel = document.querySelector('input[name="choice"]:checked');
+    if (!sel) return;
+    const next = { totals: { ...state.totals, [sel.value]: (state.totals[sel.value] || 0) + 1 },
+                   myVote: { choice: sel.value, at: new Date().toISOString() } };
+    if (save(next)) { state = next; render(); UI.toast("Demo vote recorded.", "ok"); }
+  });
+
+  $("next").onclick = () => {
+    const next = { ...state, myVote: null };
+    if (save(next)) {
+      state = next;
+      document.querySelectorAll('input[name="choice"]').forEach(i => { i.checked = false; });
+      document.querySelectorAll(".opt").forEach(o => o.classList.remove("on"));
+      $("cast").disabled = true;
+      render();
+      UI.toast("Booth unlocked. Totals kept.", "ok");
+    }
+  };
+
+  $("clear").onclick = () => {
+    if (!confirm("Clear all demo votes and totals stored in this browser?")) return;
+    try { localStorage.removeItem(KEY); } catch {}
+    state = { totals: {}, myVote: null };
+    document.querySelectorAll('input[name="choice"]').forEach(i => { i.checked = false; });
+    document.querySelectorAll(".opt").forEach(o => o.classList.remove("on"));
+    $("cast").disabled = true;
+    render();
+  };
+
+  // keep other tabs of this browser in sync
+  window.addEventListener("storage", e => { if (e.key === KEY) { state = load(); render(); } });
+
+  render();
+});
+</script>
+</body>
+</html>

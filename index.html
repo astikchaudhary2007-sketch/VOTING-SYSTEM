@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>eBallot — General Election 2026</title>
+  <meta name="description" content="Official e-Ballot portal for the General Election to the Legislative Assembly, 2026.">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Election code GE-LA-2026</div>
+        <h1>General Election to the Legislative Assembly, 2026</h1>
+        <p class="lead">Registered electors may cast their vote securely online on the day of poll.
+          Each elector can vote once, and every ballot is stored separately from the voter roll so that
+          the choice you make stays secret.</p>
+        <div class="btn-row">
+          <a class="btn btn-accent" href="vote.html">Cast your vote</a>
+          <a class="btn btn-outline" href="register.html">Register as a voter</a>
+        </div>
+      </div>
+      <div>
+        <table class="kv" aria-label="Poll details">
+          <tr><th>Status</th><td id="h-status">—</td></tr>
+          <tr><th>Date of poll</th><td id="h-date">—</td></tr>
+          <tr><th>Polling hours</th><td id="h-hours">—</td></tr>
+          <tr><th>Assembly constituencies</th><td id="h-ac">—</td></tr>
+          <tr><th>Contesting parties</th><td id="h-parties">—</td></tr>
+          <tr><th>Counting of votes</th><td id="h-count">—</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <div class="stats" aria-label="Live statistics">
+      <div class="stat"><div class="v" id="s-reg">0</div><div class="l">Registered electors</div></div>
+      <div class="stat"><div class="v" id="s-cast">0</div><div class="l">Votes cast</div></div>
+      <div class="stat"><div class="v" id="s-turn">0%</div><div class="l">Voter turnout</div></div>
+      <div class="stat"><div class="v" id="s-ac">0</div><div class="l">Constituencies</div></div>
+      <div class="stat"><div class="v" id="s-booth">0</div><div class="l">Polling stations</div></div>
+    </div>
+
+    <div class="actions">
+      <a class="action" href="register.html"><span class="n">01</span><h3>Register</h3><p>Enrol with your EPIC number and set up a secure password.</p></a>
+      <a class="action" href="login.html"><span class="n">02</span><h3>Sign in</h3><p>Verify your identity with password and a one-time code.</p></a>
+      <a class="action" href="verify.html"><span class="n">03</span><h3>Verify receipt</h3><p>Confirm that your ballot has been recorded in the ballot box.</p></a>
+      <a class="action" href="results.html"><span class="n">04</span><h3>Results</h3><p>Party-wise vote share, seat tally and turnout by constituency.</p></a>
+    </div>
+
+    <section class="section">
+      <h2>How online voting works</h2>
+      <ol class="steps">
+        <li><h3>Enrolment</h3><p>Submit your personal details, EPIC number and constituency. Applicants must be 18 or older on the date of poll.</p></li>
+        <li><h3>Authentication</h3><p>Sign in with your EPIC number and password, then enter the six-digit OTP sent to your registered mobile.</p></li>
+        <li><h3>Ballot</h3><p>The ballot unit lists every candidate in your constituency with party name and symbol. Select one and confirm.</p></li>
+        <li><h3>Receipt</h3><p>A unique receipt number is issued. It proves your ballot was counted without revealing who you voted for.</p></li>
+      </ol>
+    </section>
+
+    <div class="grid grid-2 section">
+      <section id="schedule">
+        <h2>Election schedule</h2>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>Event</th><th>Date</th><th>Status</th></tr></thead>
+            <tbody id="schedule-body"></tbody>
+          </table>
+        </div>
+      </section>
+      <section>
+        <h2>Eligibility &amp; guidelines</h2>
+        <div class="card">
+          <ul class="plain">
+            <li>You must be a citizen aged <strong>18 years or above</strong> on the date of poll.</li>
+            <li>You may vote only in the assembly constituency where you are enrolled.</li>
+            <li>Each elector has <strong>one vote</strong>. A vote cannot be changed once it is cast.</li>
+            <li>If you do not wish to vote for any candidate, you may choose <strong>NOTA</strong> (None of the Above).</li>
+            <li>A voting session expires after <strong>10 minutes</strong> of sign-in for your security.</li>
+            <li>Five incorrect password attempts lock the account for 15 minutes.</li>
+            <li>Never share your password or OTP. Officials will never ask for them.</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <section class="section" id="faq">
+      <h2>Frequently asked questions</h2>
+      <div>
+        <details class="faq"><summary>Is my vote secret?</summary><div class="ans">Yes. When you cast a vote, the system marks your name on the voter roll as "voted" and places your ballot in a separate ballot box. The ballot holds only the constituency, your choice and a rounded timestamp — never your EPIC number. Ballots are also stored in random order.</div></details>
+        <details class="faq"><summary>What is the receipt number for?</summary><div class="ans">The receipt number (format EB-XXXX-XXXX-XXXX) lets you check on the <a href="verify.html">Verify Receipt</a> page that your ballot is present in the ballot box. It does not show which candidate you selected.</div></details>
+        <details class="faq"><summary>Can I change my vote after submitting?</summary><div class="ans">No. As with a physical ballot, a vote is final once it is cast. You are shown a confirmation screen before submission so you can review your choice.</div></details>
+        <details class="faq"><summary>I did not receive my OTP.</summary><div class="ans">The OTP is valid for two minutes. Use the "Resend OTP" option on the sign-in page. In this demonstration the OTP is displayed on screen as a simulated SMS.</div></details>
+        <details class="faq"><summary>When will results be declared?</summary><div class="ans">Counting takes place on the scheduled counting date. Provisional figures are visible on the <a href="results.html">Results</a> page whenever the Returning Officer has published them.</div></details>
+        <details class="faq"><summary>What does NOTA mean?</summary><div class="ans">"None of the Above" lets you formally reject all candidates. NOTA votes are counted and shown in the results, but NOTA cannot win a seat; the candidate with the most votes is still elected.</div></details>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+UI.boot(() => {
+  const render = () => {
+    const t = Store.tally();
+    const e = Store.db.election;
+    document.getElementById("h-status").innerHTML = `<span class="status-pill status-${e.status}">${UI.statusLabel(e.status)}</span>`;
+    document.getElementById("h-date").textContent = UI.fmtDate(ELECTION.pollDate);
+    document.getElementById("h-hours").textContent = ELECTION.pollHours;
+    document.getElementById("h-ac").textContent = CONSTITUENCIES.length;
+    document.getElementById("h-parties").textContent = `${PARTIES.length} + NOTA`;
+    document.getElementById("h-count").textContent = UI.fmtDate(ELECTION.countingDate);
+    document.getElementById("s-reg").textContent = UI.num(t.registered);
+    document.getElementById("s-cast").textContent = UI.num(t.total);
+    document.getElementById("s-turn").textContent = UI.pct(t.turnout);
+    document.getElementById("s-ac").textContent = CONSTITUENCIES.length;
+    document.getElementById("s-booth").textContent = UI.num(CONSTITUENCIES.reduce((s, c) => s + c.booths, 0));
+  };
+  render();
+  document.addEventListener("store:changed", render);
+
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById("schedule-body").innerHTML = SCHEDULE
+    .slice().sort((a, b) => a.date.localeCompare(b.date))
+    .map(s => {
+      const tag = s.date < today ? '<span class="tag">Completed</span>'
+        : s.date === today ? '<span class="tag tag-ok">Today</span>' : '<span class="tag tag-warn">Upcoming</span>';
+      return `<tr><td>${s.event}</td><td>${UI.fmtDate(s.date)}</td><td>${tag}</td></tr>`;
+    }).join("");
+});
+</script>
+</body>
+</html>

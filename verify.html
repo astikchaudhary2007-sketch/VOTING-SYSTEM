@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verify Receipt — eBallot</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <div class="auth-box" style="max-width:560px">
+      <div class="crumbs"><a href="index.html">Home</a> / Verify Receipt</div>
+      <h1>Verify your ballot receipt</h1>
+      <p class="muted">Enter the receipt number you received after voting to confirm that your ballot is present
+        in the ballot box and will be counted.</p>
+
+      <div class="card">
+        <form id="f" novalidate>
+          <div class="field"><label for="code">Receipt number</label>
+            <input type="text" id="code" class="mono" placeholder="EB-XXXX-XXXX-XXXX" maxlength="17" autocomplete="off"></div>
+          <button class="btn" type="submit">Verify</button>
+        </form>
+      </div>
+
+      <div id="out" style="margin-top:18px"></div>
+
+      <div class="card" style="margin-top:18px">
+        <h3>What this check tells you</h3>
+        <ul class="plain">
+          <li>That a ballot with this receipt number exists in the ballot box.</li>
+          <li>The constituency it was cast in and the time (to the nearest minute).</li>
+          <li>It does <strong>not</strong> show the candidate selected — this protects ballot secrecy, so a receipt cannot be used to prove how someone voted.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+UI.boot(() => {
+  const code = document.getElementById("code");
+  code.addEventListener("input", () => {
+    let v = code.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (v.startsWith("EB")) v = v.slice(2);
+    v = v.slice(0, 12);
+    code.value = v ? "EB-" + v.match(/.{1,4}/g).join("-") : "";
+  });
+  document.getElementById("f").addEventListener("submit", e => {
+    e.preventDefault();
+    const out = document.getElementById("out");
+    if (!/^EB-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/.test(code.value)) {
+      UI.fieldError(code, "Receipt numbers look like EB-1A2B-3C4D-5E6F.");
+      out.innerHTML = "";
+      return;
+    }
+    UI.fieldError(code, "");
+    const r = Store.findReceipt(code.value);
+    if (!r) {
+      out.innerHTML = `<div class="notice notice-danger"><strong>No ballot found</strong>
+        No ballot with receipt <span class="mono">${UI.esc(code.value)}</span> exists. Check the number and try again,
+        or contact the helpline on ${ELECTION.helpline}.</div>`;
+      return;
+    }
+    const c = constituencyById(r.constituency);
+    out.innerHTML = `<div class="notice notice-ok"><strong>Ballot verified</strong>This ballot is recorded and will be counted.</div>
+      <div class="card"><table class="kv">
+        <tr><th>Receipt number</th><td class="mono">${r.receipt}</td></tr>
+        <tr><th>Election</th><td>${ELECTION.code}</td></tr>
+        <tr><th>Constituency</th><td>${c.id} — ${c.name}</td></tr>
+        <tr><th>Recorded at</th><td>${UI.fmtDate(r.castAt, true)}</td></tr>
+        <tr><th>Status</th><td><span class="tag tag-ok">In ballot box</span></td></tr>
+      </table></div>`;
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voter Sign In — eBallot</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <div class="auth-box">
+      <div class="crumbs"><a href="index.html">Home</a> / Voter Sign In</div>
+      <h1>Voter sign in</h1>
+      <p class="muted">Two-step verification: password, then a one-time code sent to your registered mobile.</p>
+
+      <div class="card" id="step1">
+        <div class="eyebrow">Step 1 of 2</div>
+        <form id="f1" novalidate>
+          <div class="field"><label for="epic">EPIC number</label>
+            <input type="text" id="epic" class="mono" maxlength="10" autocomplete="username" placeholder="ABC1234567"></div>
+          <div class="field"><label for="pw">Password</label>
+            <input type="password" id="pw" autocomplete="current-password"></div>
+          <button class="btn btn-block" type="submit" id="b1">Continue</button>
+        </form>
+        <p class="hint" style="margin-top:14px">Not registered yet? <a href="register.html">Apply for registration</a>.</p>
+      </div>
+
+      <div class="card hidden" id="step2">
+        <div class="eyebrow">Step 2 of 2</div>
+        <p>A six-digit OTP has been sent to the mobile number ending in <strong id="mob"></strong>.</p>
+        <form id="f2" novalidate>
+          <div class="field"><label for="otp">One-time password</label>
+            <input type="text" id="otp" class="otp-input" maxlength="6" inputmode="numeric" autocomplete="one-time-code"></div>
+          <button class="btn btn-block btn-accent" type="submit">Verify &amp; sign in</button>
+        </form>
+        <div class="pager" style="margin-top:14px">
+          <span id="otp-timer"></span>
+          <button class="link-btn" id="resend" disabled>Resend OTP</button>
+        </div>
+        <p class="hint"><button class="link-btn" id="back">Use a different EPIC number</button></p>
+      </div>
+
+      <div class="notice notice-info" style="margin-top:18px">
+        <strong>Demonstration account</strong>
+        See <span class="mono">README.md</span> for a ready-made voter account, or register a new one.
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+UI.boot(() => {
+  const $ = id => document.getElementById(id);
+  if (Store.Session.get()) { location.replace("vote.html"); return; }
+
+  let pending = null, otp = null, otpExp = 0, timer = null, otpTries = 0;
+  $("epic").addEventListener("input", e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); });
+  $("otp").addEventListener("input", e => { e.target.value = e.target.value.replace(/\D/g, ""); });
+
+  function sendOtp() {
+    otp = String(100000 + Store.randInt(900000));
+    otpExp = Date.now() + ELECTION.otpSeconds * 1000;
+    otpTries = 0;
+    UI.toast(`<strong>SMS · eBallot</strong><br>${otp} is your OTP for voter sign-in. Valid for 2 minutes. Do not share it with anyone.`, "sms", 12000);
+    $("resend").disabled = true;
+    clearInterval(timer);
+    timer = setInterval(tick, 1000);
+    tick();
+  }
+  function tick() {
+    const left = Math.max(0, Math.round((otpExp - Date.now()) / 1000));
+    $("otp-timer").textContent = left ? `OTP expires in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : "OTP expired";
+    if (left <= ELECTION.otpSeconds - 30) $("resend").disabled = false;
+    if (!left) clearInterval(timer);
+  }
+
+  $("f1").addEventListener("submit", async e => {
+    e.preventDefault();
+    const id = $("epic").value, pw = $("pw").value;
+    UI.fieldError($("epic"), /^[A-Z]{3}\d{7}$/.test(id) ? "" : "Enter a valid EPIC number.");
+    UI.fieldError($("pw"), pw ? "" : "Enter your password.");
+    if (!/^[A-Z]{3}\d{7}$/.test(id) || !pw) return;
+    $("b1").disabled = true;
+    const r = await Store.checkPassword(id, pw);
+    $("b1").disabled = false;
+    if (!r.ok) { UI.fieldError($("pw"), r.reason); return; }
+    pending = r.voter.voterId;
+    $("mob").textContent = r.voter.mobile.slice(-4);
+    $("step1").classList.add("hidden");
+    $("step2").classList.remove("hidden");
+    $("otp").focus();
+    sendOtp();
+  });
+
+  $("f2").addEventListener("submit", e => {
+    e.preventDefault();
+    const val = $("otp").value;
+    if (Date.now() > otpExp) { UI.fieldError($("otp"), "OTP has expired. Request a new one."); return; }
+    if (val !== otp) {
+      otpTries++;
+      if (otpTries >= 3) { otpExp = 0; tick(); UI.fieldError($("otp"), "Too many incorrect attempts. Request a new OTP."); return; }
+      UI.fieldError($("otp"), `Incorrect OTP. ${3 - otpTries} attempt(s) left.`);
+      return;
+    }
+    clearInterval(timer);
+    Store.Session.start(pending);
+    Store.log("voter", `Sign-in ${Store.maskId(pending)}`);
+    Store.persist();
+    location.href = "vote.html";
+  });
+
+  $("resend").addEventListener("click", sendOtp);
+  $("back").addEventListener("click", () => {
+    clearInterval(timer); pending = null; otp = null;
+    $("step2").classList.add("hidden"); $("step1").classList.remove("hidden");
+    $("pw").value = ""; $("otp").value = "";
+  });
+});
+</script>
+</body>
+</html>

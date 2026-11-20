@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voter Registration — eBallot</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <div class="page-head">
+      <div class="crumbs"><a href="index.html">Home</a> / Voter Registration</div>
+      <h1>Voter registration (Form 6-E)</h1>
+      <p>Application for inclusion of name in the electoral roll for online voting. Fields marked
+        <span class="req">*</span> are mandatory.</p>
+    </div>
+
+    <div class="split">
+      <div>
+        <form id="reg" novalidate>
+          <fieldset>
+            <legend>A. Personal details</legend>
+            <div class="form-grid">
+              <div class="field full"><label for="name">Full name (as on EPIC card) <span class="req">*</span></label>
+                <input type="text" id="name" autocomplete="name" maxlength="60"></div>
+              <div class="field"><label for="father">Father's / Mother's / Spouse's name <span class="req">*</span></label>
+                <input type="text" id="father" maxlength="60"></div>
+              <div class="field"><label for="dob">Date of birth <span class="req">*</span></label>
+                <input type="date" id="dob"><p class="hint">Must be 18 or older on the date of poll.</p></div>
+              <div class="field full"><span class="label">Gender <span class="req">*</span></span>
+                <div class="radio-row" role="radiogroup">
+                  <label><input type="radio" name="gender" value="Male"> Male</label>
+                  <label><input type="radio" name="gender" value="Female"> Female</label>
+                  <label><input type="radio" name="gender" value="Other"> Third gender</label>
+                </div><input type="hidden" id="gender-anchor"></div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>B. Electoral details</legend>
+            <div class="form-grid">
+              <div class="field"><label for="epic">EPIC number <span class="req">*</span></label>
+                <input type="text" id="epic" class="mono" maxlength="10" placeholder="ABC1234567" autocomplete="off">
+                <p class="hint">3 letters followed by 7 digits.</p></div>
+              <div class="field"><label for="ac">Assembly constituency <span class="req">*</span></label>
+                <select id="ac"><option value="">Select constituency</option></select></div>
+              <div class="field full"><label for="addr">Residential address <span class="req">*</span></label>
+                <input type="text" id="addr" maxlength="120" autocomplete="street-address"></div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>C. Contact &amp; account security</legend>
+            <div class="form-grid">
+              <div class="field"><label for="mobile">Mobile number <span class="req">*</span></label>
+                <input type="tel" id="mobile" maxlength="10" inputmode="numeric" placeholder="10-digit number" autocomplete="tel-national">
+                <p class="hint">OTP for sign-in will be sent to this number.</p></div>
+              <div class="field"><label for="email">Email (optional)</label>
+                <input type="email" id="email" maxlength="80" autocomplete="email"></div>
+              <div class="field"><label for="pw">Create password <span class="req">*</span></label>
+                <input type="password" id="pw" autocomplete="new-password">
+                <div class="pw-meter"><span id="pw-bar"></span></div>
+                <p class="hint" id="pw-hint">At least 8 characters with upper-case, lower-case and a number.</p></div>
+              <div class="field"><label for="pw2">Confirm password <span class="req">*</span></label>
+                <input type="password" id="pw2" autocomplete="new-password"></div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>D. Declaration</legend>
+            <div class="field">
+              <div class="check"><input type="checkbox" id="decl">
+                <label for="decl">I declare that I am a citizen, that the information given above is true to the best of my
+                  knowledge, and that I am not enrolled in any other constituency. I understand that making a false
+                  declaration is a punishable offence.</label></div>
+            </div>
+          </fieldset>
+
+          <div class="btn-row">
+            <button type="submit" class="btn btn-accent" id="submit">Submit application</button>
+            <button type="reset" class="btn btn-outline">Clear form</button>
+          </div>
+        </form>
+
+        <div id="done" class="hidden">
+          <div class="notice notice-ok"><strong>Registration successful</strong>
+            Your name has been added to the electoral roll for online voting.</div>
+          <div class="card">
+            <table class="kv" id="done-kv"></table>
+            <div class="btn-row" style="margin-top:18px">
+              <a class="btn" href="login.html">Proceed to sign in</a>
+              <a class="btn btn-outline" href="index.html">Back to home</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="card side-list">
+        <h3>Before you begin</h3>
+        <ul class="plain">
+          <li>Keep your EPIC (Elector's Photo Identity Card) at hand.</li>
+          <li>Use a mobile number you have access to — it is needed for the OTP.</li>
+          <li>One mobile number can be linked to one elector only.</li>
+          <li>Choose a password you have not used on other websites.</li>
+        </ul>
+        <h3 style="margin-top:18px">Need help?</h3>
+        <p>Call the voter helpline on <strong id="help"></strong> (07:00 – 20:00).</p>
+      </aside>
+    </div>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+UI.boot(() => {
+  const $ = id => document.getElementById(id);
+  $("help").textContent = ELECTION.helpline;
+  $("ac").insertAdjacentHTML("beforeend",
+    CONSTITUENCIES.map(c => `<option value="${c.id}">${c.id} — ${c.name} (${c.district})</option>`).join(""));
+
+  $("epic").addEventListener("input", e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); });
+  $("mobile").addEventListener("input", e => { e.target.value = e.target.value.replace(/\D/g, ""); });
+
+  function strength(pw) {
+    let s = 0;
+    if (pw.length >= 8) s++;
+    if (pw.length >= 12) s++;
+    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+    if (/\d/.test(pw)) s++;
+    if (/[^A-Za-z0-9]/.test(pw)) s++;
+    return s;
+  }
+  $("pw").addEventListener("input", () => {
+    const s = strength($("pw").value);
+    const colours = ["#a1282a", "#a1282a", "#c07a12", "#c07a12", "#1e6b43", "#1e6b43"];
+    const words = ["Too weak", "Weak", "Fair", "Good", "Strong", "Very strong"];
+    $("pw-bar").style.width = (s / 5 * 100) + "%";
+    $("pw-bar").style.background = colours[s];
+    $("pw-hint").textContent = $("pw").value ? `Strength: ${words[s]}` : "At least 8 characters with upper-case, lower-case and a number.";
+  });
+
+  function ageOn(dob, onDate) {
+    const d = new Date(dob), t = new Date(onDate);
+    let a = t.getFullYear() - d.getFullYear();
+    if (t.getMonth() < d.getMonth() || (t.getMonth() === d.getMonth() && t.getDate() < d.getDate())) a--;
+    return a;
+  }
+
+  function validate() {
+    let ok = true;
+    const check = (el, msg) => { UI.fieldError(el, msg); if (msg) ok = false; };
+    const name = $("name").value.trim();
+    check($("name"), !name ? "Enter your full name." : !/^[A-Za-z .'-]{3,}$/.test(name) ? "Use letters only (minimum 3 characters)." : "");
+    check($("father"), $("father").value.trim().length < 3 ? "Enter the name of your relative." : "");
+    const dob = $("dob").value;
+    check($("dob"), !dob ? "Enter your date of birth." :
+      new Date(dob) > new Date() ? "Date of birth cannot be in the future." :
+      ageOn(dob, ELECTION.pollDate) < 18 ? "You must be at least 18 years old on the date of poll." :
+      ageOn(dob, ELECTION.pollDate) > 120 ? "Check the date of birth." : "");
+    const g = document.querySelector('input[name="gender"]:checked');
+    check($("gender-anchor"), g ? "" : "Select a gender.");
+    const epic = $("epic").value;
+    check($("epic"), !/^[A-Z]{3}\d{7}$/.test(epic) ? "Enter a valid EPIC number, e.g. ABC1234567." :
+      Store.getVoter(epic) ? "This EPIC number is already registered." : "");
+    check($("ac"), $("ac").value ? "" : "Select your assembly constituency.");
+    check($("addr"), $("addr").value.trim().length < 8 ? "Enter your full residential address." : "");
+    check($("mobile"), /^[6-9]\d{9}$/.test($("mobile").value) ? "" : "Enter a valid 10-digit mobile number.");
+    const em = $("email").value.trim();
+    check($("email"), em && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em) ? "Enter a valid email address." : "");
+    const pw = $("pw").value;
+    check($("pw"), pw.length < 8 || !/[A-Z]/.test(pw) || !/[a-z]/.test(pw) || !/\d/.test(pw)
+      ? "Password must have 8+ characters, upper-case, lower-case and a number." : "");
+    check($("pw2"), pw !== $("pw2").value || !pw ? "Passwords do not match." : "");
+    check($("decl"), $("decl").checked ? "" : "You must accept the declaration.");
+    return ok;
+  }
+
+  $("reg").addEventListener("reset", () => {
+    document.querySelectorAll(".field.has-error").forEach(f => f.classList.remove("has-error"));
+    document.querySelectorAll(".err").forEach(e => e.textContent = "");
+    $("pw-bar").style.width = 0;
+  });
+
+  $("reg").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!validate()) {
+      const first = document.querySelector(".has-error input, .has-error select");
+      if (first) first.focus();
+      UI.toast("Please correct the highlighted fields.", "error");
+      return;
+    }
+    $("submit").disabled = true;
+    try {
+      const v = await Store.registerVoter({
+        voterId: $("epic").value, name: $("name").value.trim(), fatherName: $("father").value.trim(),
+        dob: $("dob").value, gender: document.querySelector('input[name="gender"]:checked').value,
+        mobile: $("mobile").value, email: $("email").value.trim(), address: $("addr").value.trim(),
+        constituency: $("ac").value
+      }, $("pw").value);
+      const c = constituencyById(v.constituency);
+      const ref = "REF/" + new Date().getFullYear() + "/" + v.voterId.slice(-5) + (100 + Store.randInt(900));
+      $("done-kv").innerHTML = `
+        <tr><th>Application reference</th><td class="mono">${ref}</td></tr>
+        <tr><th>Name</th><td>${UI.esc(v.name)}</td></tr>
+        <tr><th>EPIC number</th><td class="mono">${v.voterId}</td></tr>
+        <tr><th>Constituency</th><td>${c.id} — ${c.name}</td></tr>
+        <tr><th>Registered mobile</th><td>XXXXXX${v.mobile.slice(-4)}</td></tr>
+        <tr><th>Registered on</th><td>${UI.fmtDate(v.registeredAt, true)}</td></tr>`;
+      $("reg").classList.add("hidden");
+      $("done").classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      UI.toast(UI.esc(err.message), "error");
+      $("submit").disabled = false;
+    }
+  });
+});
+</script>
+</body>
+</html>

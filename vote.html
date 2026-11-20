@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cast Vote — eBallot</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <div class="page-head no-print">
+      <div class="crumbs"><a href="index.html">Home</a> / Cast Vote</div>
+      <h1>Electronic ballot</h1>
+      <p>Select one candidate by pressing the blue button against their name. You will be asked to confirm before
+        your vote is recorded.</p>
+    </div>
+
+    <div id="msg"></div>
+
+    <section id="ballot-view" class="hidden">
+      <div class="voter-strip">
+        <div><div class="l">Elector</div><div class="v" id="v-name"></div></div>
+        <div><div class="l">EPIC number</div><div class="v mono" id="v-epic"></div></div>
+        <div><div class="l">Constituency</div><div class="v" id="v-ac"></div></div>
+        <div><div class="l">Polling station</div><div class="v" id="v-ps"></div></div>
+      </div>
+
+      <div class="ballot" role="radiogroup" aria-label="Ballot">
+        <div class="ballot-head">
+          <strong id="b-title"></strong>
+          <span>Ballot unit · <span class="mono" id="b-serial"></span></span>
+        </div>
+        <div id="rows"></div>
+      </div>
+
+      <div class="ballot-actions">
+        <span class="timer" id="timer"></span>
+        <div class="btn-row">
+          <button class="btn btn-outline" id="clear" disabled>Clear selection</button>
+          <button class="btn btn-accent" id="review" disabled>Review &amp; cast vote</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="receipt-view" class="hidden">
+      <div class="receipt">
+        <div class="receipt-top">
+          <h2>Your vote has been recorded</h2>
+          <p>Thank you for participating in the election.</p>
+        </div>
+        <div class="receipt-body">
+          <p>Your receipt number is:</p>
+          <div class="receipt-code" id="r-code"></div>
+          <table class="kv">
+            <tr><th>Election</th><td id="r-el"></td></tr>
+            <tr><th>Constituency</th><td id="r-ac"></td></tr>
+            <tr><th>Recorded at</th><td id="r-at"></td></tr>
+            <tr><th>Elector</th><td class="mono" id="r-epic"></td></tr>
+          </table>
+          <div class="notice notice-info" style="margin-top:18px">
+            <strong>Keep this number safe</strong>
+            You can use it on the <a href="verify.html">Verify Receipt</a> page to confirm your ballot is in the
+            ballot box. For secrecy, the receipt does not show which candidate you selected.
+          </div>
+          <div class="btn-row no-print">
+            <button class="btn" onclick="window.print()">Print receipt</button>
+            <button class="btn btn-outline" id="copy">Copy number</button>
+            <a class="btn btn-outline" href="index.html" id="finish">Finish &amp; sign out</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<dialog id="confirm" aria-labelledby="c-title">
+  <div class="dlg-head"><h2 id="c-title">Confirm your vote</h2></div>
+  <div class="dlg-body">
+    <p>You have selected:</p>
+    <div class="confirm-choice" id="c-choice"></div>
+    <p class="muted" style="font-size:13.5px">Once cast, your vote cannot be changed or withdrawn.</p>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn btn-outline" id="c-cancel">Go back</button>
+    <button class="btn btn-accent" id="c-ok">Cast my vote</button>
+  </div>
+</dialog>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+UI.boot(() => {
+  const $ = id => document.getElementById(id);
+  const msg = (kind, title, body) => { $("msg").innerHTML = `<div class="notice notice-${kind}"><strong>${title}</strong>${body}</div>`; };
+
+  const s = Store.Session.get();
+  if (!s) {
+    msg("info", "Sign in required", `<p>You need to sign in with your EPIC number and OTP before you can vote.</p>
+      <a class="btn" href="login.html">Sign in to vote</a>`);
+    return;
+  }
+  const voter = Store.getVoter(s.voterId);
+  if (!voter) { Store.Session.end(); location.replace("login.html"); return; }
+  const c = constituencyById(voter.constituency);
+
+  if (voter.hasVoted) {
+    msg("ok", "You have already voted", `<p>A vote was recorded against EPIC ${Store.maskId(voter.voterId)} on
+      ${UI.fmtDate(voter.votedAt, true)}. Each elector may vote only once.</p>
+      <div class="btn-row"><a class="btn" href="verify.html">Verify your receipt</a><a class="btn btn-outline" href="results.html">View results</a></div>`);
+    return;
+  }
+  const status = Store.db.election.status;
+  if (status !== "open") {
+    msg(status === "closed" ? "danger" : "warn", UI.statusLabel(status),
+      `<p>${status === "closed" ? "The poll has closed. Votes can no longer be cast." : "Polling has not started yet. Please return during polling hours."}</p>`);
+    return;
+  }
+
+  // ---- render ballot ----
+  $("ballot-view").classList.remove("hidden");
+  $("v-name").textContent = voter.name;
+  $("v-epic").textContent = Store.maskId(voter.voterId);
+  $("v-ac").textContent = `${c.id} — ${c.name}`;
+  const ps = 1 + (parseInt(voter.voterId.slice(-3), 10) % c.booths);
+  $("v-ps").textContent = `PS-${String(ps).padStart(3, "0")}`;
+  $("b-title").textContent = `${c.id} ${c.name} Assembly Constituency`;
+  $("b-serial").textContent = `BU-${c.id.slice(-2)}${String(ps).padStart(3, "0")}`;
+
+  const options = PARTIES.map(p => ({ id: p.id, cand: candidateFor(p.id, c.id), party: p.name, symbol: p.symbol, color: p.color }))
+    .sort((a, b) => a.cand.localeCompare(b.cand));
+  options.push({ id: "NOTA", cand: "None of the Above", party: "NOTA", symbol: "nota", color: NOTA.color });
+
+  $("rows").innerHTML = options.map((o, i) => `
+    <div class="ballot-row ${o.id === "NOTA" ? "nota" : ""}" data-id="${o.id}" role="radio" aria-checked="false" tabindex="0"
+         aria-label="${i + 1}. ${UI.esc(o.cand)}, ${UI.esc(o.party)}">
+      <div class="sl">${i + 1}</div>
+      <div class="cand"><strong>${UI.esc(o.cand)}</strong><span>${UI.esc(o.party)}</span></div>
+      <div class="symc">${symbolSvg(o.symbol, 36, o.color)}</div>
+      <div class="pick"><span class="lamp-dot"></span><button class="pick-btn" tabindex="-1" aria-hidden="true"></button></div>
+    </div>`).join("");
+
+  let selected = null;
+  function select(id) {
+    selected = id;
+    document.querySelectorAll(".ballot-row").forEach(r => {
+      const on = r.dataset.id === id;
+      r.classList.toggle("selected", on);
+      r.setAttribute("aria-checked", on);
+    });
+    $("review").disabled = !id;
+    $("clear").disabled = !id;
+  }
+  document.querySelectorAll(".ballot-row").forEach(r => {
+    r.addEventListener("click", () => select(r.dataset.id));
+    r.addEventListener("keydown", e => {
+      if (e.key === " " || e.key === "Enter") { e.preventDefault(); select(r.dataset.id); }
+      if (e.key === "ArrowDown") { e.preventDefault(); (r.nextElementSibling || r).focus(); }
+      if (e.key === "ArrowUp") { e.preventDefault(); (r.previousElementSibling || r).focus(); }
+    });
+  });
+  $("clear").onclick = () => select(null);
+
+  // ---- session timer ----
+  const timerEl = $("timer");
+  const t = setInterval(() => {
+    const left = Math.max(0, Math.round((s.expires - Date.now()) / 1000));
+    timerEl.textContent = `Session expires in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+    timerEl.classList.toggle("low", left < 60);
+    if (!left) {
+      clearInterval(t);
+      Store.Session.end();
+      $("confirm").open && $("confirm").close();
+      $("ballot-view").classList.add("hidden");
+      msg("warn", "Session expired", `<p>For your security the voting session has ended. No vote was recorded.</p><a class="btn" href="login.html">Sign in again</a>`);
+    }
+  }, 1000);
+
+  // ---- confirm & cast ----
+  const dlg = $("confirm");
+  $("review").onclick = () => {
+    const o = options.find(x => x.id === selected);
+    $("c-choice").innerHTML = `${symbolSvg(o.symbol, 44, o.color)}<div><strong style="font-size:16px">${UI.esc(o.cand)}</strong><br>
+      <span class="muted">${UI.esc(o.party)}</span></div>`;
+    dlg.showModal();
+  };
+  $("c-cancel").onclick = () => dlg.close();
+  $("c-ok").onclick = async () => {
+    $("c-ok").disabled = true;
+    try {
+      const r = await Store.castVote(voter.voterId, selected);
+      clearInterval(t);
+      dlg.close();
+      $("ballot-view").classList.add("hidden");
+      document.querySelector(".page-head").classList.add("hidden");
+      $("receipt-view").classList.remove("hidden");
+      $("r-code").textContent = r.receipt;
+      $("r-el").textContent = ELECTION.code;
+      $("r-ac").textContent = `${c.id} — ${c.name}`;
+      $("r-at").textContent = UI.fmtDate(r.castAt, true);
+      $("r-epic").textContent = Store.maskId(voter.voterId);
+      UI.header();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      dlg.close();
+      UI.toast(UI.esc(err.message), "error");
+      $("c-ok").disabled = false;
+    }
+  };
+  $("copy").onclick = () => navigator.clipboard.writeText($("r-code").textContent).then(() => UI.toast("Receipt number copied.", "ok"));
+  $("finish").onclick = () => Store.Session.end();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Results — eBallot</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <div class="page-head">
+      <div class="crumbs"><a href="index.html">Home</a> / Results</div>
+      <h1>Results &amp; turnout</h1>
+      <p id="sub">Figures update automatically as ballots are recorded.</p>
+    </div>
+
+    <div id="hidden-msg" class="hidden">
+      <div class="notice notice-warn"><strong>Results not yet published</strong>
+        The Returning Officer has not released results for public view. Please check again on the counting date.</div>
+    </div>
+
+    <div id="content" class="hidden">
+      <div class="stats" style="margin-top:0">
+        <div class="stat"><div class="v" id="s-total"></div><div class="l">Votes polled</div></div>
+        <div class="stat"><div class="v" id="s-turn"></div><div class="l">Turnout</div></div>
+        <div class="stat"><div class="v" id="s-lead"></div><div class="l">Leading party</div></div>
+        <div class="stat"><div class="v" id="s-seats"></div><div class="l">Seats decided</div></div>
+        <div class="stat"><div class="v" id="s-nota"></div><div class="l">NOTA votes</div></div>
+      </div>
+
+      <div class="grid grid-2 section">
+        <section class="card">
+          <div class="card-head"><h2>Party-wise vote share</h2><small id="upd"></small></div>
+          <div class="bars" id="bars"></div>
+        </section>
+        <section class="card">
+          <div class="card-head"><h2>Seat tally</h2><small><span id="majority"></span></small></div>
+          <div class="seat-strip" id="strip"></div>
+          <div class="legend" id="legend"></div>
+          <div class="table-wrap" style="margin-top:16px">
+            <table class="data">
+              <thead><tr><th>Party</th><th class="num">Won</th><th class="num">Votes</th><th class="num">Share</th></tr></thead>
+              <tbody id="seat-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <section class="section">
+        <h2>Constituency-wise results</h2>
+        <p class="muted">Select a constituency to see the full count for every candidate.</p>
+        <div id="consts"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+UI.boot(() => {
+  const $ = id => document.getElementById(id);
+  const opened = new Set();
+
+  function render() {
+    const e = Store.db.election;
+    if (!e.resultsPublished) {
+      $("hidden-msg").classList.remove("hidden"); $("content").classList.add("hidden"); return;
+    }
+    $("hidden-msg").classList.add("hidden"); $("content").classList.remove("hidden");
+    const t = Store.tally();
+    const status = e.status === "closed" ? "Final count — polling closed." : "Provisional count — polling in progress.";
+    $("sub").textContent = `${status} Figures update automatically as ballots are recorded.`;
+    $("upd").textContent = "Updated " + new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+    const all = [...PARTIES, NOTA];
+    const ranked = all.slice().sort((a, b) => t.byParty[b.id] - t.byParty[a.id]);
+    const max = Math.max(1, ...Object.values(t.byParty));
+    const share = id => t.total ? t.byParty[id] / t.total : 0;
+
+    $("s-total").textContent = UI.num(t.total);
+    $("s-turn").textContent = UI.pct(t.turnout);
+    const leadParty = PARTIES.slice().sort((a, b) => t.byParty[b.id] - t.byParty[a.id])[0];
+    $("s-lead").textContent = t.total ? leadParty.id : "—";
+    const decided = Object.values(t.seats).reduce((s, n) => s + n, 0);
+    $("s-seats").textContent = `${decided} / ${CONSTITUENCIES.length}`;
+    $("s-nota").textContent = UI.num(t.byParty.NOTA);
+
+    $("bars").innerHTML = ranked.map(p => `
+      <div class="bar-row">
+        <div class="name"><span class="dot" style="width:10px;height:10px;background:${p.color};display:inline-block"></span>${p.id}
+          <span class="muted" style="font-weight:400;font-size:12.5px">${p.id === "NOTA" ? "" : p.symbolName}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${t.byParty[p.id] / max * 100}%;background:${p.color}"></div></div>
+        <div class="val"><strong>${UI.pct(share(p.id))}</strong><small class="muted">${UI.num(t.byParty[p.id])} votes</small></div>
+      </div>`).join("");
+
+    const need = Math.floor(CONSTITUENCIES.length / 2) + 1;
+    $("majority").textContent = `Majority mark: ${need} of ${CONSTITUENCIES.length}`;
+    const seatParties = PARTIES.filter(p => t.seats[p.id] > 0).sort((a, b) => t.seats[b.id] - t.seats[a.id]);
+    const undecided = CONSTITUENCIES.length - decided;
+    $("strip").innerHTML = seatParties.map(p =>
+      `<span title="${p.name}: ${t.seats[p.id]}" style="flex:${t.seats[p.id]};background:${p.color}"></span>`).join("") +
+      (undecided ? `<span title="Undecided: ${undecided}" style="flex:${undecided};background:#d8d5cb"></span>` : "");
+    $("legend").innerHTML = seatParties.map(p => `<span><i style="background:${p.color}"></i>${p.id} ${t.seats[p.id]}</span>`).join("") +
+      (undecided ? `<span><i style="background:#d8d5cb"></i>Undecided ${undecided}</span>` : "");
+    $("seat-body").innerHTML = PARTIES.slice().sort((a, b) => t.seats[b.id] - t.seats[a.id] || t.byParty[b.id] - t.byParty[a.id]).map(p => `
+      <tr><td><span class="party-chip"><span class="dot" style="background:${p.color}"></span>${p.name}</span></td>
+      <td class="num"><strong>${t.seats[p.id]}</strong></td><td class="num">${UI.num(t.byParty[p.id])}</td><td class="num">${UI.pct(share(p.id))}</td></tr>`).join("");
+
+    $("consts").innerHTML = CONSTITUENCIES.map(c => {
+      const r = t.byConst[c.id];
+      const w = r.winner && r.winner !== "TIE" ? partyById(r.winner) : null;
+      const label = w ? `<span class="party-chip"><span class="dot" style="background:${w.color}"></span>${candidateFor(w.id, c.id)} (${w.id})</span>`
+        : r.winner === "TIE" ? '<span class="tag tag-warn">Tie</span>' : '<span class="muted">No votes yet</span>';
+      const rows = [...PARTIES, NOTA].map(p => ({ p, v: r.votes[p.id] })).sort((a, b) => b.v - a.v);
+      return `<details class="const-card" data-id="${c.id}" ${opened.has(c.id) ? "open" : ""}>
+        <summary>
+          <div><strong>${c.id} — ${c.name}</strong><br><small class="muted">${c.district} district · ${c.category}</small></div>
+          <div><small class="muted">${e.status === "closed" ? "Winner" : "Leading"}</small><br>${label}</div>
+          <div><small class="muted">Margin</small><br>${w ? UI.num(r.margin) + " votes" : "—"}</div>
+          <div style="text-align:right"><small class="muted">Turnout</small><br><strong>${r.registered ? UI.pct(r.total / r.registered) : "—"}</strong></div>
+        </summary>
+        <div class="inner">
+          <div class="table-wrap"><table class="data">
+            <thead><tr><th>Candidate</th><th>Party</th><th class="num">Votes</th><th class="num">Share</th></tr></thead>
+            <tbody>${rows.map(({ p, v }) => `<tr>
+              <td>${p.id === "NOTA" ? "None of the Above" : UI.esc(candidateFor(p.id, c.id))}</td>
+              <td><span class="party-chip"><span class="dot" style="background:${p.color}"></span>${p.id}</span></td>
+              <td class="num">${UI.num(v)}</td><td class="num">${r.total ? UI.pct(v / r.total) : "—"}</td></tr>`).join("")}</tbody>
+          </table></div>
+          <p class="muted" style="margin:10px 0 0;font-size:13px">Electors: ${UI.num(r.registered)} · Votes polled: ${UI.num(r.total)} · Polling stations: ${c.booths}</p>
+        </div>
+      </details>`;
+    }).join("");
+    document.querySelectorAll(".const-card").forEach(d =>
+      d.addEventListener("toggle", () => d.open ? opened.add(d.dataset.id) : opened.delete(d.dataset.id)));
+  }
+
+  render();
+  document.addEventListener("store:changed", () => { render(); UI.header(); });
+});
+</script>
+</body>
+</html>

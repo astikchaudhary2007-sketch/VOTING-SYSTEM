@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Returning Officer — eBallot</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <!-- login -->
+    <div class="auth-box hidden" id="login">
+      <div class="crumbs"><a href="index.html">Home</a> / Returning Officer</div>
+      <h1>Returning Officer sign in</h1>
+      <p class="muted">Restricted area. All actions are recorded in the audit log.</p>
+      <div class="card">
+        <form id="lf" novalidate>
+          <div class="field"><label for="u">Username</label><input type="text" id="u" autocomplete="username"></div>
+          <div class="field"><label for="p">Password</label><input type="password" id="p" autocomplete="current-password"></div>
+          <button class="btn btn-block" type="submit">Sign in</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- dashboard -->
+    <div id="dash" class="hidden">
+      <div class="page-head" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+        <div>
+          <div class="crumbs"><a href="index.html">Home</a> / Returning Officer</div>
+          <h1>Election control panel</h1>
+          <p>${ELECTION.code}</p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="logout">Sign out</button>
+      </div>
+
+      <div class="admin-layout">
+        <nav class="admin-nav" aria-label="Sections">
+          <a href="#overview">Overview</a>
+          <a href="#control">Poll control</a>
+          <a href="#turnout">Turnout by constituency</a>
+          <a href="#roll">Electoral roll</a>
+          <a href="#audit">Audit log</a>
+          <a href="#tools">Data tools</a>
+        </nav>
+
+        <div>
+          <section class="admin-section" id="overview">
+            <div class="stats" style="margin-top:0">
+              <div class="stat"><div class="v" id="o-reg"></div><div class="l">Electors</div></div>
+              <div class="stat"><div class="v" id="o-real"></div><div class="l">Self-registered</div></div>
+              <div class="stat"><div class="v" id="o-cast"></div><div class="l">Ballots</div></div>
+              <div class="stat"><div class="v" id="o-turn"></div><div class="l">Turnout</div></div>
+              <div class="stat"><div class="v" id="o-lock"></div><div class="l">Locked accounts</div></div>
+            </div>
+          </section>
+
+          <section class="admin-section card" id="control">
+            <h2>Poll control</h2>
+            <div class="control-row">
+              <div><strong>Polling status</strong><p>Voters can cast ballots only while polling is open.</p></div>
+              <div class="seg" id="seg-status">
+                <button data-v="scheduled">Not started</button><button data-v="open">Open</button><button data-v="closed">Closed</button>
+              </div>
+            </div>
+            <div class="control-row">
+              <div><strong>Public results</strong><p>Show vote counts on the public Results page.</p></div>
+              <div class="seg" id="seg-results">
+                <button data-v="0">Hidden</button><button data-v="1">Published</button>
+              </div>
+            </div>
+            <div class="control-row">
+              <div><strong>Integrity check</strong><p>Ballots in the box must equal electors marked as voted.</p></div>
+              <div id="integrity"></div>
+            </div>
+          </section>
+
+          <section class="admin-section" id="turnout">
+            <h2>Turnout by constituency</h2>
+            <div class="table-wrap">
+              <table class="data">
+                <thead><tr><th>Constituency</th><th>District</th><th class="num">Electors</th><th class="num">Voted</th><th class="num">Turnout</th><th>Leading</th></tr></thead>
+                <tbody id="t-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-section" id="roll">
+            <div class="card-head"><h2>Electoral roll</h2>
+              <div class="btn-row">
+                <input type="search" id="rq" placeholder="Search EPIC or name" style="width:220px">
+                <select id="rf" style="width:auto">
+                  <option value="">All constituencies</option>
+                </select>
+                <select id="rv" style="width:auto">
+                  <option value="">All</option><option value="1">Voted</option><option value="0">Not voted</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="data">
+                <thead><tr><th>EPIC</th><th>Name</th><th>AC</th><th>Gender</th><th>Mobile</th><th>Registered</th><th>Status</th></tr></thead>
+                <tbody id="r-body"></tbody>
+              </table>
+            </div>
+            <div class="pager"><span id="r-info"></span>
+              <span class="btn-row"><button class="btn btn-outline btn-sm" id="prev">Previous</button><button class="btn btn-outline btn-sm" id="next">Next</button></span></div>
+          </section>
+
+          <section class="admin-section card" id="audit">
+            <h2>Audit log</h2>
+            <div class="log" id="log"></div>
+          </section>
+
+          <section class="admin-section card" id="tools">
+            <h2>Data tools</h2>
+            <div class="control-row">
+              <div><strong>Load sample electors</strong><p>Adds 400 synthetic electors (about 68% of whom vote) for demonstration.</p></div>
+              <button class="btn btn-outline" id="seed">Load sample data</button>
+            </div>
+            <div class="control-row">
+              <div><strong>Export results</strong><p>Download constituency-wise counts as a CSV file.</p></div>
+              <button class="btn btn-outline" id="csv">Export CSV</button>
+            </div>
+            <div class="control-row">
+              <div><strong>Reset election</strong><p>Deletes every elector, ballot and log entry and restores the demo accounts. Cannot be undone.</p></div>
+              <button class="btn btn-danger" id="reset">Reset all data</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<dialog id="reset-dlg" aria-labelledby="rd-title">
+  <div class="dlg-head"><h2 id="rd-title">Reset all election data?</h2></div>
+  <div class="dlg-body">
+    <p>This permanently removes all electors, ballots and audit entries stored in this browser.</p>
+    <div class="field"><label for="rd-type">Type <strong class="mono">RESET</strong> to confirm</label><input type="text" id="rd-type" autocomplete="off"></div>
+  </div>
+  <div class="dlg-foot"><button class="btn btn-outline" id="rd-cancel">Cancel</button><button class="btn btn-danger" id="rd-ok" disabled>Reset</button></div>
+</dialog>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+UI.boot(() => {
+  const $ = id => document.getElementById(id);
+  document.querySelector("#dash .page-head p").textContent = `${ELECTION.code} · ${ELECTION.title}`;
+
+  function show() {
+    const on = Store.AdminSession.active();
+    $("login").classList.toggle("hidden", on);
+    $("dash").classList.toggle("hidden", !on);
+    if (on) render();
+  }
+
+  $("lf").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (await Store.checkAdmin($("u").value.trim(), $("p").value)) {
+      Store.AdminSession.start();
+      Store.log("admin", "Returning Officer signed in");
+      Store.persist();
+      show();
+    } else {
+      UI.fieldError($("p"), "Incorrect username or password.");
+      Store.log("system", "Failed Returning Officer sign-in attempt");
+      Store.persist();
+    }
+  });
+  $("logout").onclick = () => { Store.AdminSession.end(); show(); };
+
+  $("rf").insertAdjacentHTML("beforeend", CONSTITUENCIES.map(c => `<option value="${c.id}">${c.id} ${c.name}</option>`).join(""));
+
+  let page = 0;
+  const PER = 15;
+
+  function render() {
+    const db = Store.db, t = Store.tally();
+    const voters = Object.values(db.voters);
+    const voted = voters.filter(v => v.hasVoted).length;
+
+    $("o-reg").textContent = UI.num(t.registered);
+    $("o-real").textContent = UI.num(voters.filter(v => !v.synthetic).length);
+    $("o-cast").textContent = UI.num(t.total);
+    $("o-turn").textContent = UI.pct(t.turnout);
+    $("o-lock").textContent = voters.filter(v => v.lockedUntil && new Date(v.lockedUntil) > new Date()).length;
+
+    document.querySelectorAll("#seg-status button").forEach(b => b.classList.toggle("on", b.dataset.v === db.election.status));
+    document.querySelectorAll("#seg-results button").forEach(b => b.classList.toggle("on", b.dataset.v === (db.election.resultsPublished ? "1" : "0")));
+    $("integrity").innerHTML = voted === t.total
+      ? `<span class="tag tag-ok">Passed · ${UI.num(t.total)} = ${UI.num(voted)}</span>`
+      : `<span class="tag tag-danger">Mismatch · ${UI.num(t.total)} ballots vs ${UI.num(voted)} voted</span>`;
+
+    $("t-body").innerHTML = CONSTITUENCIES.map(c => {
+      const r = t.byConst[c.id];
+      const w = r.winner && r.winner !== "TIE" ? partyById(r.winner) : null;
+      return `<tr><td><strong>${c.id}</strong> ${c.name}</td><td>${c.district}</td><td class="num">${UI.num(r.registered)}</td>
+        <td class="num">${UI.num(r.total)}</td><td class="num">${r.registered ? UI.pct(r.total / r.registered) : "—"}</td>
+        <td>${w ? `<span class="party-chip"><span class="dot" style="background:${w.color}"></span>${w.id} +${UI.num(r.margin)}</span>` : r.winner === "TIE" ? "Tie" : "—"}</td></tr>`;
+    }).join("");
+
+    renderRoll();
+
+    $("log").innerHTML = db.audit.slice(0, 200).map(a =>
+      `<div><time>${UI.fmtDate(a.ts, true)}</time><span class="tag">${a.actor}</span><span>${UI.esc(a.event)}</span></div>`).join("")
+      || '<p class="muted">No entries.</p>';
+  }
+
+  function renderRoll() {
+    const q = $("rq").value.trim().toLowerCase(), f = $("rf").value, vf = $("rv").value;
+    const list = Object.values(Store.db.voters)
+      .filter(v => (!q || v.voterId.toLowerCase().includes(q) || (v.name || "").toLowerCase().includes(q))
+        && (!f || v.constituency === f) && (vf === "" || String(+v.hasVoted) === vf))
+      .sort((a, b) => (a.synthetic - b.synthetic) || b.registeredAt.localeCompare(a.registeredAt));
+    const pages = Math.max(1, Math.ceil(list.length / PER));
+    page = Math.min(page, pages - 1);
+    const slice = list.slice(page * PER, page * PER + PER);
+    $("r-body").innerHTML = slice.map(v => {
+      const locked = v.lockedUntil && new Date(v.lockedUntil) > new Date();
+      return `<tr><td class="mono">${v.voterId}</td><td>${UI.esc(v.name)}${v.synthetic ? ' <span class="tag">Sample</span>' : ""}</td>
+        <td>${v.constituency}</td><td>${v.gender || "—"}</td><td class="mono">${v.mobile ? "XXXXXX" + v.mobile.slice(-4) : "—"}</td>
+        <td>${UI.fmtDate(v.registeredAt)}</td>
+        <td>${locked ? '<span class="tag tag-danger">Locked</span>' : v.hasVoted ? '<span class="tag tag-ok">Voted</span>' : '<span class="tag">Not voted</span>'}</td></tr>`;
+    }).join("") || '<tr><td colspan="7" class="muted">No electors match the filter.</td></tr>';
+    $("r-info").textContent = list.length ? `Showing ${page * PER + 1}–${page * PER + slice.length} of ${UI.num(list.length)}` : "0 results";
+    $("prev").disabled = page === 0;
+    $("next").disabled = page >= pages - 1;
+  }
+  ["rq", "rf", "rv"].forEach(id => $(id).addEventListener("input", () => { page = 0; renderRoll(); }));
+  $("prev").onclick = () => { page--; renderRoll(); };
+  $("next").onclick = () => { page++; renderRoll(); };
+
+  document.querySelectorAll("#seg-status button").forEach(b => b.onclick = () => {
+    Store.setStatus(b.dataset.v); render(); UI.header(); UI.toast(`Polling status set to “${UI.statusLabel(b.dataset.v)}”.`, "ok");
+  });
+  document.querySelectorAll("#seg-results button").forEach(b => b.onclick = () => {
+    Store.setResultsPublished(b.dataset.v === "1"); render(); UI.toast(b.dataset.v === "1" ? "Results published." : "Results hidden from public.", "ok");
+  });
+
+  $("seed").onclick = () => {
+    const r = Store.seedSample(400);
+    render();
+    UI.toast(`Added ${r.made} sample electors and ${r.votes} ballots.`, "ok");
+  };
+
+  $("csv").onclick = () => {
+    const t = Store.tally();
+    const head = ["Constituency", "Name", "Electors", "Votes polled", ...PARTIES.map(p => p.id), "NOTA", "Leading"];
+    const lines = [head.join(",")];
+    CONSTITUENCIES.forEach(c => {
+      const r = t.byConst[c.id];
+      lines.push([c.id, `"${c.name}"`, r.registered, r.total, ...PARTIES.map(p => r.votes[p.id]), r.votes.NOTA, r.winner || ""].join(","));
+    });
+    lines.push(["TOTAL", "", t.registered, t.total, ...PARTIES.map(p => t.byParty[p.id]), t.byParty.NOTA, ""].join(","));
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+    a.download = `${ELECTION.code}-results.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    Store.log("admin", "Results exported to CSV"); Store.persist(); render();
+  };
+
+  const dlg = $("reset-dlg");
+  $("reset").onclick = () => { $("rd-type").value = ""; $("rd-ok").disabled = true; dlg.showModal(); };
+  $("rd-type").oninput = () => { $("rd-ok").disabled = $("rd-type").value !== "RESET"; };
+  $("rd-cancel").onclick = () => dlg.close();
+  $("rd-ok").onclick = async () => {
+    await Store.resetAll();
+    dlg.close();
+    render(); UI.header();
+    UI.toast("All election data has been reset.", "ok");
+  };
+
+  document.addEventListener("store:changed", () => { if (Store.AdminSession.active()) render(); });
+  show();
+});
+</script>
+</body>
+</html>
